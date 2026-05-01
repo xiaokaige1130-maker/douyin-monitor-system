@@ -1,32 +1,30 @@
-# douyin-monitor-system
+# 抖音同行直播监控系统
 
-## 项目简介
+用于持续监控同行抖音直播运营数据，重点关注：
 
-这是一个面向抖音直播监控场景的系统仓库，主要目标是持续监控目标账号的开播状态、直播时长和直播间相关数据。
-
-如果你以后翻到这个仓库，记住一句话就够了：
-
-> 这是你做抖音直播监控和数据采集的系统仓库。
+- 开播时间
+- 下播时间和直播时长
+- 当前/峰值/平均在线人数
+- 当前/峰值/平均进店或看播人数口径
+- 点赞、评论、分享
+- 直播间商品快照（平台页面返回时记录）
+- 同行账号排行、开播日历、近期直播复盘
 
 ## 当前定位
 
-- 抖音直播监控系统
-- 直播开播 / 下播状态跟踪
-- 直播间数据采集与统计
-- 可继续扩展为告警、报表和可视化平台
+这是一个“同行直播运营数据采集与复盘工具”，不是单纯爬虫。它帮助你观察同行什么时候开播、播多久、直播间人气如何变化，从而反推自己的直播排班、话术节奏和运营策略。
 
-## 当前能力
+## 关键能力
 
-- 24 小时自动监控
-- 开播状态检测
-- 直播时长统计
-- 直播间数据采集
-- 多账号监控
+- 多同行账号监控
+- 低频轮询和直播中高频采样
+- 风险状态识别：登录失效、验证码、安全验证、频控
+- 账号级冷却，避免失败后持续请求
+- REST API 写入监控账号
+- 活跃直播、近期直播、直播详情快照
+- 运营总览、同行排行榜、开播日历
 - Docker 化部署
-- REST API
-- PostgreSQL / InfluxDB / Redis 数据存储
-- Grafana 可视化
-- 钉钉 / 微信 / 邮件通知
+- PostgreSQL / Redis / InfluxDB / Grafana 基础设施
 
 ## 快速开始
 
@@ -34,16 +32,66 @@
 git clone https://github.com/xiaokaige1130-maker/douyin-monitor-system.git
 cd douyin-monitor-system
 cp .env.example .env
-./install.sh
-./start.sh
+# 编辑 .env，填 DOUYIN_COOKIE（可选但建议）
+docker-compose up -d
+python main.py
 ```
 
-默认访问：`http://localhost:8000`
+API 默认地址：`http://localhost:8000`
 
-## 当前状态
+## 添加同行账号
 
-项目已经具备“系统级监控”的基本结构，但仍然依赖实际的抖音 Cookie、接口可用性和运行环境配置。
+推荐优先填写 `live_url` 或 `sec_uid`，这样比只填抖音号更稳定。
 
-## 一句话记忆
+```bash
+curl -X POST "http://localhost:8000/api/accounts?douyin_id=competitor_001&nickname=同行A&live_url=https://www.douyin.com/user/SEC_UID&check_interval_minutes=10"
+```
 
-> 这是你用来监控抖音直播数据的项目。
+如果知道固定直播间 `room_id`：
+
+```bash
+curl -X POST "http://localhost:8000/api/accounts?douyin_id=competitor_002&nickname=同行B&live_room_id=123456789&check_interval_minutes=10"
+```
+
+## 常用接口
+
+```bash
+# 健康检查
+curl http://localhost:8000/api/health
+
+# 监控账号和风险状态
+curl http://localhost:8000/api/accounts
+
+# 当前正在直播的同行
+curl http://localhost:8000/api/lives/active
+
+# 最近直播记录
+curl "http://localhost:8000/api/lives/recent?days=7&limit=50"
+
+# 同行直播运营总览
+curl "http://localhost:8000/api/operations/overview?days=7"
+
+# 同行账号排行
+curl "http://localhost:8000/api/operations/accounts/ranking?days=7&limit=50"
+
+# 开播日历
+curl "http://localhost:8000/api/operations/live-calendar?days=7&limit=200"
+```
+
+## 风控说明
+
+系统只做低频访问、失败冷却、登录/验证状态识别和人工处理提示，不做验证码绕过，也不保证平台页面或接口长期稳定。出现 `verify_required`、`login_required`、`blocked` 时，账号会自动进入冷却，避免继续打请求。
+
+建议：
+
+- 使用专门监控账号，不使用主账号
+- 单账号监控数量不要太多
+- 非直播检查间隔建议 10 分钟以上
+- 直播中检查间隔建议 2 分钟以上
+- 出现验证后先人工处理，再清除冷却
+
+清除冷却：
+
+```bash
+curl -X PATCH "http://localhost:8000/api/accounts/1?clear_cooldown=true"
+```

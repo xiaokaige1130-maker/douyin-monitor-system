@@ -79,12 +79,22 @@ services:
       influxdb:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://douyin:douyin123@postgres:5432/douyin_monitor
+      - DATABASE_URL=postgresql+asyncpg://douyin:douyin123@postgres:5432/douyin_monitor
       - REDIS_URL=redis://redis:6379/0
       - INFLUXDB_URL=http://influxdb:8086
       - INFLUXDB_TOKEN=douyin-token-123
       - INFLUXDB_ORG=douyin
       - INFLUXDB_BUCKET=douyin_data
+      - CHECK_INTERVAL_NORMAL=${CHECK_INTERVAL_NORMAL:-10}
+      - CHECK_INTERVAL_LIVE=${CHECK_INTERVAL_LIVE:-2}
+      - MAX_CONCURRENT_CHECKS=${MAX_CONCURRENT_CHECKS:-3}
+      - MIN_REQUEST_DELAY_SECONDS=${MIN_REQUEST_DELAY_SECONDS:-2}
+      - MAX_REQUEST_DELAY_SECONDS=${MAX_REQUEST_DELAY_SECONDS:-8}
+      - ACCOUNT_COOLDOWN_MINUTES=${ACCOUNT_COOLDOWN_MINUTES:-30}
+      - RISK_COOLDOWN_MINUTES=${RISK_COOLDOWN_MINUTES:-180}
+      - DOUYIN_COOKIE=${DOUYIN_COOKIE:-}
+      - PROXY_ENABLED=${PROXY_ENABLED:-false}
+      - PROXY_URL=${PROXY_URL:-}
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
